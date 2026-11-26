@@ -77,6 +77,15 @@ impl Pending {
 
     fn make(&self) {
         self.made.get_or_init(|| {
+            if super::library::is_warm_bad(&self.key) {
+                tracing::info!(key = %self.key, "skipping known-bad pipeline from warm-bad.txt");
+                return None;
+            }
+            #[cfg(all(windows, feature = "diagnostics"))]
+            if let Some(hash) = super::skipped_shaders(&self.shaders) {
+                tracing::info!(hash, "skipping host pipeline creation");
+                return None;
+            }
             let began = Instant::now();
             let made = HostPipeline::new(&self.shaders, self.graphics.as_deref());
             super::library::note_time(&self.key, began.elapsed().as_millis() as u64);

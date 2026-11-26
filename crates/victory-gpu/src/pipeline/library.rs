@@ -439,8 +439,29 @@ const LIBRARY_FILE: &str = "host-pipelines.bin";
 /// start renames it over the library first ([`Blob::of`]).
 const NEXT_FILE: &str = "host-pipelines.next";
 const EARLY_FILE: &str = "early-pipelines.txt";
+const WARM_BAD_FILE: &str = "warm-bad.txt";
 /// Title pipelines listed for an early start, at most.
 const EARLY_MAX: usize = 100_000;
+
+/// Returns true if `key` is listed in `warm-bad.txt` (crashed out-of-process
+/// during `victory warm`).
+pub(super) fn is_warm_bad(key: &str) -> bool {
+    static BAD: OnceLock<HashSet<String>> = OnceLock::new();
+    BAD.get_or_init(|| {
+        let Some(dir) = DIR.get() else {
+            return HashSet::new();
+        };
+        let Ok(text) = std::fs::read_to_string(dir.join(WARM_BAD_FILE)) else {
+            return HashSet::new();
+        };
+        text.lines()
+            .filter_map(|line| line.split_whitespace().next())
+            .filter(|k| !k.is_empty())
+            .map(str::to_owned)
+            .collect()
+    })
+    .contains(key)
+}
 
 fn library() -> Option<&'static Library> {
     static LIBRARY: OnceLock<Option<Library>> = OnceLock::new();
